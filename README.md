@@ -12,7 +12,7 @@ Install the Xcode Command Line Tools, CMake, Rust with Cargo and Python 3. Run t
 open build/preview/Amapoani.app
 ```
 
-The bootstrap downloads pinned speech runtimes and fetches Rust dependencies. The build produces a local ad hoc signed app. Use **Settings → Models → Download Missing Models** to set up speech. Existing compatible models can be reused from a shared folder.
+The bootstrap downloads pinned speech runtimes and fetches Rust dependencies. The build produces a local ad hoc signed app. If a signed Amapoani installation is already running, quit it before testing the preview’s global shortcut. Use **Settings → Models → Download Missing Models** to set up speech. Existing compatible models can be reused from a shared folder.
 
 ## Use the capsule
 

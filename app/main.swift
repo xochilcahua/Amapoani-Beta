@@ -82,7 +82,9 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate {
         capsule.onSeek = { [weak self] time in self?.move(to: time) }
         capsule.onPhrase = { [weak self] offset in self?.seekPhrase(at: offset) }
         capsule.onTranscript = { [weak self] text in self?.session.apply("edit_recovery", ["text": text]) }
-        if Bundle.main.bundleIdentifier != "local.ahampo.preview" {
+        let previewBesideInstalledApp = Bundle.main.bundleIdentifier == "local.ahampo.preview" &&
+            !NSRunningApplication.runningApplications(withBundleIdentifier: "local.ahampo.capsule").isEmpty
+        if !previewBesideInstalledApp {
             shortcut = Shortcut({ [weak self] in self?.summon() },
                                 microphoneAction: { [weak self] in self?.toggleCapsule() })
         }
