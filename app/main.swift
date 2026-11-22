@@ -281,13 +281,14 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate {
             case .dictate: dictate()
             case .editDraft: editTranscript()
             case .copyDraft: if readyTranscript != nil { copyCurrentText() }
-            case .clearDraft: break
+            case .clearDraft, .toggleDraft: break
             }
             return
         }
         switch command {
         case .copyDraft:
             if !session.state.dictating, !session.state.draft.isEmpty { copyCurrentText() }
+        case .toggleDraft: toggleDraft()
         case .clearDraft:
             if session.state.phase == "standard" || (session.state.reading && session.state.readingView == "draft") {
                 capsule.clearDraft()
@@ -485,11 +486,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate {
             if session.state.reading { cancel() }
             else if session.state.dictating { finishDictation() }
             else { read() }
-        case "expand":
-            notice = ""
-            session.apply("expand", ["expanded": !session.state.expanded])
-            render()
-            capsule.focusDraft()
+        case "expand": toggleDraft()
         case "insert": insertTranscript()
         case "discardTranscript": discardTranscript()
         case "recordAgain": dictate()
@@ -502,6 +499,14 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate {
             if action == "draft" { capsule.focusDraft() }
         default: return
         }
+    }
+
+    private func toggleDraft() {
+        guard session.state.phase == "standard", session.state.recovery == nil else { return }
+        notice = ""
+        session.apply("expand", ["expanded": !session.state.expanded])
+        render()
+        capsule.focusDraft()
     }
 
     private func copyCurrentText() {

@@ -1,6 +1,12 @@
 # Amapoani
 
-Amapoani is an offline read-aloud and dictation capsule for Apple Silicon Macs. It reads selected text or an editable draft with Kokoro, and transcribes speech with Whisper. Beta 1 is a source release for macOS 14 or later.
+Amapoani is an offline read-aloud and dictation capsule for Apple Silicon Macs. It reads selected text or an editable draft with Kokoro, and transcribes speech with Whisper. The beta supports macOS 14 or later.
+
+## Install the beta
+
+Download `Amapoani-Installer-macos-arm64.zip` from the [beta release](https://github.com/xochilcahua/Amapoani-Beta/releases). Unzip it and open `Install-Amapoani.command`. The installer verifies and downloads the speech runtime, then places the app in `~/Applications`. Open Amapoani from Finder and use **Settings → Models → Download Missing Models**. The installer needs an internet connection for setup.
+
+This beta is ad hoc signed and has no Apple notarization. macOS may ask for manual approval when you open it. [Apple's guidance for running downloaded apps](https://support.apple.com/en-us/102445)
 
 ## Build and open
 
@@ -24,6 +30,7 @@ The default global shortcut is **Option–Shift–Space**. The menu-bar **Show C
 | Control–D | Start dictation |
 | Control–E | Edit the draft |
 | Control–C | Copy the whole draft or the transcript under review |
+| Control–T | Expand or collapse the draft |
 | Control–K | Clear the draft. Command–Z undoes the clear. |
 | Return | Finish recording or insert the reviewed transcript |
 | Escape | Cancel recording or discard the reviewed transcript |

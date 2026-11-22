@@ -296,6 +296,8 @@ final class CapsuleView: NSView, NSTextViewDelegate {
         target.alignment = .right
         captureTime.alignment = .right
         status.font = .systemFont(ofSize: 12, weight: .semibold)
+        status.lineBreakMode = .byTruncatingTail
+        target.lineBreakMode = .byTruncatingTail
         [elapsed, duration, screenNotice, captureTime].forEach { $0.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular) }
         elapsed.alignment = .right
         screenNotice.lineBreakMode = .byTruncatingTail
@@ -311,6 +313,7 @@ final class CapsuleView: NSView, NSTextViewDelegate {
         passage.isHorizontallyResizable = false
         passage.textContainerInset = NSSize(width: 0, height: 4)
         passage.textContainer?.containerSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        passage.textContainer?.lineFragmentPadding = 0
         passage.textContainer?.widthTracksTextView = true
         passage.textContainer?.heightTracksTextView = false
         passage.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
@@ -327,6 +330,7 @@ final class CapsuleView: NSView, NSTextViewDelegate {
         inlineEditor.isVerticallyResizable = true
         inlineEditor.isHorizontallyResizable = false
         inlineEditor.textContainerInset = NSSize(width: 0, height: 3)
+        inlineEditor.textContainer?.lineFragmentPadding = 0
         inlineEditor.textContainer?.widthTracksTextView = true
         inlineEditor.autoresizingMask = [.width]
         inlineEditor.setAccessibilityLabel("Compact Draft")
@@ -398,6 +402,8 @@ final class CapsuleView: NSView, NSTextViewDelegate {
         guard !inlineScroll.isHidden || scroll.documentView === inlineEditor else { return }
         window?.makeKey()
         window?.makeFirstResponder(inlineEditor)
+        layoutSubtreeIfNeeded()
+        inlineEditor.scrollRangeToVisible(inlineEditor.selectedRange())
     }
 
     func focusTranscript() {
@@ -506,7 +512,7 @@ final class CapsuleView: NSView, NSTextViewDelegate {
             }
         }
         if let caret = state.caret, caret >= 0, caret <= state.draft.utf16.count,
-           draftChanged || window?.firstResponder !== inlineEditor {
+           draftChanged {
             inlineEditor.setSelectedRange(NSRange(location: caret, length: 0))
         }
         updatingText = false
@@ -589,7 +595,7 @@ final class CapsuleView: NSView, NSTextViewDelegate {
         let pointsUp = (expansion == .upward) != tall
         expand.symbol(pointsUp ? "chevron.up" : "chevron.down",
                       label: tall ? "Collapse Draft" : "Expand Draft", ink: palette.secondary)
-        if !tall { expand.toolTip = "Edit Draft (\(CapsuleShortcuts().hint(for: .editDraft)))" }
+        expand.toolTip = (tall ? "Collapse Draft" : "Expand Draft") + " (\(CapsuleShortcuts().hint(for: .toggleDraft)))"
     }
 
     private func updateReviewButtons(_ shortcuts: CapsuleShortcuts) {
@@ -677,15 +683,23 @@ final class CapsuleView: NSView, NSTextViewDelegate {
         clear.frame = NSRect(x: x + 44, y: rowY + 12, width: 34, height: 40)
         placeholder.frame = NSRect(x: x + 16, y: rowY + 20, width: max(0, inner - 101), height: 22)
         inlineScroll.frame = NSRect(x: x + 10, y: rowY + 22, width: max(0, inner - 95), height: 22)
-        let viewportHeight: CGFloat = status.isHidden ? 139 : (state.dictating || reviewing) ? 119 : 111
-        scroll.frame = NSRect(x: x + 15, y: bodyY + 4, width: inner - 30, height: tall ? viewportHeight : 0)
-        status.frame = NSRect(x: x + 16, y: bodyY + 124,
-                              width: state.dictating || reviewing ? inner - 170 : inner - 32, height: 19)
-        target.frame = NSRect(x: x + inner - 163, y: bodyY + 125, width: 112, height: 17)
-        reviewCopy.frame = NSRect(x: x + inner - 47, y: bodyY + 119, width: 32, height: 28)
-        captureTime.frame = NSRect(x: x + inner - 47, y: bodyY + 124, width: 31, height: 17)
+        let contentX = x + 20
+        let contentWidth = max(0, inner - 40)
+        let hasHeader = !status.isHidden || (state.reading && state.readingView == "draft")
+        let bodyHeight = CapsulePlacement.expandedHeight - CapsulePlacement.rowHeight
+        let contentTop = bodyY + bodyHeight - (hasHeader ? 41 : 14)
+        let contentBottom = bodyY + 13
+        scroll.frame = NSRect(x: contentX, y: contentBottom,
+                              width: contentWidth, height: tall ? contentTop - contentBottom : 0)
+        let headerY = bodyY + bodyHeight - 32
+        let right = contentX + contentWidth
+        let trailing: CGFloat = state.dictating || reviewing ? 154 : !follow.isHidden ? 113 : 0
+        status.frame = NSRect(x: contentX, y: headerY, width: max(0, contentWidth - trailing), height: 19)
+        target.frame = NSRect(x: right - 149, y: headerY, width: 108, height: 19)
+        reviewCopy.frame = NSRect(x: right - 30, y: headerY - 4, width: 30, height: 26)
+        captureTime.frame = NSRect(x: right - 34, y: headerY, width: 34, height: 19)
         screenNotice.frame = noticeFrame.insetBy(dx: 10, dy: 4)
-        follow.frame = NSRect(x: x + inner - 114, y: bodyY + 118, width: 103, height: 25)
+        follow.frame = NSRect(x: right - 103, y: headerY - 4, width: 103, height: 25)
         if reviewing {
             let fractions: [CGFloat] = [0.18, 0.23, 0.14, 0.22, 0.23]
             let availableWidth = width - 56
@@ -707,9 +721,8 @@ final class CapsuleView: NSView, NSTextViewDelegate {
             control.layer?.cornerRadius = 8
         }
         if state.reading && state.readingView == "draft" {
-            scroll.frame.size.height = 112
-            copy.frame = NSRect(x: x + 12, y: bodyY + 118, width: 32, height: 28)
-            clear.frame = NSRect(x: x + 48, y: bodyY + 118, width: 32, height: 28)
+            copy.frame = NSRect(x: contentX, y: headerY - 4, width: 32, height: 26)
+            clear.frame = NSRect(x: contentX + 36, y: headerY - 4, width: 32, height: 26)
         }
         let draftScroll = scroll.documentView === inlineEditor ? scroll : inlineScroll
         fit(inlineEditor, in: draftScroll)
@@ -726,7 +739,12 @@ final class CapsuleView: NSView, NSTextViewDelegate {
         let size = scrollView.contentSize
         guard size.width > 0, size.height > 0 else { return }
         textView.minSize = NSSize(width: 0, height: size.height)
-        let frameSize = NSSize(width: size.width, height: max(textView.frame.height, size.height))
+        guard let layout = textView.layoutManager, let container = textView.textContainer else { return }
+        if textView.frame.width != size.width { textView.setFrameSize(NSSize(width: size.width, height: size.height)) }
+        layout.ensureLayout(for: container)
+        let height = max(layout.usedRect(for: container).maxY, layout.extraLineFragmentRect.maxY)
+            + 2 * textView.textContainerInset.height
+        let frameSize = NSSize(width: size.width, height: max(ceil(height), size.height))
         if textView.frame.size != frameSize { textView.setFrameSize(frameSize) }
     }
 

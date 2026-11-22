@@ -1,9 +1,9 @@
 import AppKit
 
 enum CapsuleCommand: String, CaseIterable {
-    case read, dictate, editDraft, copyDraft, clearDraft
+    case read, dictate, editDraft, copyDraft, clearDraft, toggleDraft
 
-    var worksInEditor: Bool { self == .copyDraft || self == .clearDraft }
+    var worksInEditor: Bool { self == .copyDraft || self == .clearDraft || self == .toggleDraft }
 
     var label: String {
         switch self {
@@ -12,6 +12,7 @@ enum CapsuleCommand: String, CaseIterable {
         case .editDraft: return "Edit Draft"
         case .copyDraft: return "Copy Draft"
         case .clearDraft: return "Clear Draft"
+        case .toggleDraft: return "Expand or Collapse Draft"
         }
     }
 
@@ -22,6 +23,7 @@ enum CapsuleCommand: String, CaseIterable {
         case .editDraft: return "e"
         case .copyDraft: return "c"
         case .clearDraft: return "k"
+        case .toggleDraft: return "t"
         }
     }
 }

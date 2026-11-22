@@ -25,10 +25,12 @@ struct ShortcutRegression {
         precondition(command("c", modifiers: .control) == .copyDraft)
         precondition(command("k", modifiers: .control) == .clearDraft)
         precondition(CapsuleCommand.clearDraft.worksInEditor)
+        precondition(command("t", modifiers: .control) == .toggleDraft)
+        precondition(CapsuleCommand.toggleDraft.worksInEditor)
         defaults.set(["read": "c", "dictate": "k"], forKey: "capsuleCommandKeys")
         precondition(command("c", modifiers: .control) == .read)
         precondition(command("k", modifiers: .control) == .dictate)
-        precondition(Set(CapsuleCommand.allCases.map { shortcuts.key(for: $0) }).count == 5)
+        precondition(Set(CapsuleCommand.allCases.map { shortcuts.key(for: $0) }).count == 6)
         shortcuts.reset()
 
         shortcuts.modifier = .option

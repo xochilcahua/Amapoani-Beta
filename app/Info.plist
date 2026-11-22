@@ -9,7 +9,7 @@
   <key>CFBundleIconFile</key><string>AppIcon.icns</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>0.1.2</string>
-  <key>CFBundleVersion</key><string>23</string>
+  <key>CFBundleVersion</key><string>24</string>
   <key>AHAMPOLaunchHandoff</key><true/>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>LSUIElement</key><true/>
