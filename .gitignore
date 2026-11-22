@@ -1,0 +1,11 @@
+/build/
+/work/
+/core/target/
+.DS_Store
+__pycache__/
+*.p12
+*.pfx
+*.pem
+*.key
+*.keychain
+*.keychain-db

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="utf-8">
+<title>AHAMPO Journey Fixture 7d2792 | none</title>
+<style>
+  body { font: 17px/1.5 system-ui; max-width: 52rem; margin: 2rem auto; padding: 0 1rem; }
+  .controls { display: flex; flex-wrap: wrap; gap: .5rem; }
+  button, textarea { font: inherit; }
+  button { padding: .35rem .65rem; }
+  textarea { box-sizing: border-box; width: 100%; height: 5rem; }
+</style>
+<h1>AHAMPO Journey Fixture 7d2792</h1>
+<div class="controls">
+  <button type="button" id="select-a">Select Page A</button>
+  <button type="button" id="select-b">Select Page B</button>
+  <button type="button" id="select-edit">Select Textarea</button>
+  <button type="button" id="select-none">Clear Page Selection</button>
+</div>
+<p id="page-a">Amber lanterns mark <strong>the first harbor.</strong> Seven boats wait beside the pier while the evening tide comes in.</p>
+<p id="page-b">Violet ribbons line <em>the second harbor.</em> Two quiet boats carry blankets across the water before sunrise.</p>
+<label for="editor">Fixture textarea</label>
+<textarea id="editor">Silver kites circle the meadow. This sentence comes from the editable field only.</textarea>
+<script>
+  const editor = document.getElementById("editor");
+  const first = document.getElementById("page-a");
+  const second = document.getElementById("page-b");
+  document.body.tabIndex = -1;
+
+  function report() {
+    const page = getSelection().toString();
+    const editorSelection = editor.value.slice(editor.selectionStart, editor.selectionEnd);
+    let state = "other";
+    if (document.activeElement === editor && editorSelection === editor.value) state = "textarea";
+    else if (page === first.textContent) state = "page-a";
+    else if (page === second.textContent) state = "page-b";
+    else if (!page && document.activeElement !== editor) state = "none";
+    document.title = "AHAMPO Journey Fixture 7d2792 | " + state;
+  }
+
+  function pickPage(element) {
+    document.body.focus({preventScroll: true});
+    getSelection().removeAllRanges();
+    if (element) {
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      getSelection().addRange(range);
+    }
+    report();
+  }
+
+  document.getElementById("select-a").onclick = () => pickPage(first);
+  document.getElementById("select-b").onclick = () => pickPage(second);
+  document.getElementById("select-none").onclick = () => pickPage(null);
+  document.getElementById("select-edit").onclick = () => {
+    getSelection().removeAllRanges();
+    editor.focus({preventScroll: true});
+    editor.select();
+    report();
+  };
+  document.addEventListener("selectionchange", report);
+  document.addEventListener("focusin", report);
+  editor.addEventListener("select", report);
+</script>
+</html>

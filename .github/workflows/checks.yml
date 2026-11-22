@@ -1,0 +1,35 @@
+name: Checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - run: cargo build --locked --manifest-path core/Cargo.toml
+      - run: python3 -B tests/acceptance/core_probe.py core/target/debug/libahampo_core.so
+      - run: python3 -B tests/regressions/session.py core/target/debug/libahampo_core.so
+      - run: python3 -B -m unittest discover -s tests/acceptance -p 'test_*.py'
+      - run: sha256sum --check SHA256SUMS
+        working-directory: tests/journeys
+
+  macos-preview:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - run: ./scripts/bootstrap-macos.sh
+      - run: ./scripts/build.sh
+      - run: codesign --verify --deep --strict build/preview/Amapoani.app
+      - run: swiftc app/CapsuleShortcuts.swift tests/regressions/capsule-shortcuts.swift -o "$RUNNER_TEMP/capsule-shortcuts" && "$RUNNER_TEMP/capsule-shortcuts"
