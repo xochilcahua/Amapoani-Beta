@@ -10,6 +10,7 @@ private enum SettingsPage: String, CaseIterable {
 
 final class Settings: NSWindowController, NSTextFieldDelegate, NSWindowDelegate {
     var changed: (() -> Void)?
+    var microphoneKeyRequested: (() -> Void)?
     var positionChanged: (() -> Void)?
     var modelsChanged: ((Model?) -> Void)?
     var cancelMicrophone: (() -> Void)?
@@ -29,9 +30,17 @@ final class Settings: NSWindowController, NSTextFieldDelegate, NSWindowDelegate 
     private var addingVoice = false
     private var body = NSStackView()
     private let pages = NSTabView()
+    private let navigation = NSSegmentedControl(labels: SettingsPage.allCases.map(\.rawValue), trackingMode: .selectOne,
+                                                target: nil, action: nil)
+    private let microphoneKey = NSButton(checkboxWithTitle: "Show or hide with the microphone key", target: nil, action: nil)
+    private let microphoneKeyDetail = NSTextField(wrappingLabelWithString: "")
+    private let microphoneKeyActions = NSStackView()
+    private let microphoneKeyRetry = NSButton(title: "Try Again", target: nil, action: nil)
+    private let microphoneKeyHelp = NSButton(title: "Setup Help", target: nil, action: nil)
     private let shortcutModifier = NSPopUpButton()
     private var shortcutKeys: [CapsuleCommand: NSPopUpButton] = [:]
     private let setup = NSButton(title: "Download Missing Models", target: nil, action: nil)
+    private let setupDetail = NSTextField(wrappingLabelWithString: "")
     private let modelDetail = NSTextField(wrappingLabelWithString: "")
     private let voiceDetail = NSTextField(wrappingLabelWithString: "")
     private let microphoneDetail = NSTextField(wrappingLabelWithString: "")
@@ -62,8 +71,8 @@ final class Settings: NSWindowController, NSTextFieldDelegate, NSWindowDelegate 
         window?.isReleasedWhenClosed = false
         window?.delegate = self
         let content = NSView()
-        let navigation = NSSegmentedControl(labels: SettingsPage.allCases.map(\.rawValue), trackingMode: .selectOne,
-                                            target: self, action: #selector(changePage))
+        navigation.target = self
+        navigation.action = #selector(changePage)
         navigation.segmentStyle = .rounded
         navigation.selectedSegment = 0
         navigation.setAccessibilityLabel("Settings sections")
@@ -113,11 +122,22 @@ final class Settings: NSWindowController, NSTextFieldDelegate, NSWindowDelegate 
         beginPage(.shortcuts)
         section("Show Capsule")
         row("Global shortcut", popup(CapsuleShortcuts.summonOptions, key: "shortcut", label: "Global shortcut"))
-        let microphoneKey = NSButton(checkboxWithTitle: "Use the microphone key (F13)",
-                                     target: self, action: #selector(microphoneKeyChanged))
-        microphoneKey.state = prefs.bool(forKey: Preference.microphoneShortcut) ? .on : .off
-        microphoneKey.toolTip = "Requires mapping your keyboard’s Dictation key to F13. The shortcut above also works."
+        microphoneKey.target = self
+        microphoneKey.action = #selector(microphoneKeyChanged)
         body.addArrangedSubview(microphoneKey)
+        microphoneKeyDetail.font = .systemFont(ofSize: 12)
+        microphoneKeyDetail.textColor = .secondaryLabelColor
+        microphoneKeyDetail.setAccessibilityLabel("Microphone key status")
+        body.addArrangedSubview(microphoneKeyDetail)
+        microphoneKeyDetail.widthAnchor.constraint(lessThanOrEqualTo: body.widthAnchor).isActive = true
+        microphoneKeyRetry.target = self
+        microphoneKeyRetry.action = #selector(retryMicrophoneKey)
+        microphoneKeyHelp.target = self
+        microphoneKeyHelp.action = #selector(openMicrophoneKeyHelp)
+        microphoneKeyActions.addArrangedSubview(microphoneKeyRetry)
+        microphoneKeyActions.addArrangedSubview(microphoneKeyHelp)
+        body.addArrangedSubview(microphoneKeyActions)
+        updateMicrophoneKey(.off)
         section("While the capsule has focus")
         shortcutModifier.addItems(withTitles: CapsuleShortcuts.Modifier.allCases.map(\.title))
         shortcutModifier.setAccessibilityLabel("Capsule modifier")
@@ -152,7 +172,21 @@ final class Settings: NSWindowController, NSTextFieldDelegate, NSWindowDelegate 
         row("Maximum dictation", duration(Preference.dictation))
 
         beginPage(.models)
-        section("Installed models")
+        section("Speech setup")
+        setupDetail.font = .systemFont(ofSize: 13)
+        setupDetail.textColor = .secondaryLabelColor
+        body.addArrangedSubview(setupDetail)
+        setupDetail.widthAnchor.constraint(lessThanOrEqualTo: body.widthAnchor).isActive = true
+        setup.target = self
+        setup.action = #selector(setupClicked)
+        body.addArrangedSubview(setup)
+        modelDetail.font = .systemFont(ofSize: 11)
+        modelDetail.textColor = .secondaryLabelColor
+        modelDetail.isHidden = true
+        body.addArrangedSubview(modelDetail)
+        modelDetail.widthAnchor.constraint(lessThanOrEqualTo: body.widthAnchor).isActive = true
+
+        section("Manage models")
         path.textColor = .secondaryLabelColor
         path.font = .systemFont(ofSize: 12)
         body.addArrangedSubview(path)
@@ -172,12 +206,6 @@ final class Settings: NSWindowController, NSTextFieldDelegate, NSWindowDelegate 
             group.spacing = 10
             row(model.label, group)
         }
-        setup.target = self
-        setup.action = #selector(setupClicked)
-        body.addArrangedSubview(setup)
-        modelDetail.font = .systemFont(ofSize: 11)
-        modelDetail.textColor = .secondaryLabelColor
-        body.addArrangedSubview(modelDetail)
         upgrade.title = "Download Higher-Quality Kokoro…"
         upgrade.target = self
         upgrade.action = #selector(upgradeReading)
@@ -264,7 +292,7 @@ final class Settings: NSWindowController, NSTextFieldDelegate, NSWindowDelegate 
         refreshAccess()
         refreshLanguage()
         refreshVoices()
-        path.stringValue = models.root.path
+        path.stringValue = (models.root.path as NSString).abbreviatingWithTildeInPath
         let separateLanguages = [SpeechLanguage.english, .spanish].filter { hasSelectedSeparateVoice(for: $0) }
         let separate = !separateLanguages.isEmpty
         let candidates = Dictionary(uniqueKeysWithValues: Model.allCases.map {
@@ -277,6 +305,9 @@ final class Settings: NSWindowController, NSTextFieldDelegate, NSWindowDelegate 
         setup.title = needsRuntime ? "Set Up Speech" : "Download Missing Models"
         setup.isHidden = !needsRuntime && [.reading, .multilingualDictation].allSatisfy { !(candidates[$0] ?? []).isEmpty }
         setup.isEnabled = !installingRuntime && downloads.isEmpty
+        setupDetail.stringValue = needsRuntime
+            ? "Download the speech engine and any missing models once. Reading and dictation work offline afterward."
+            : setup.isHidden ? "Speech setup is complete." : "Download the missing models for offline reading and dictation."
         for model in Model.allCases {
             let found = candidates[model]?.first
             modelLabels[model]?.stringValue = downloads.contains(model) ? "Downloading…" : found == nil ? "Missing" : "Checking…"
@@ -320,7 +351,11 @@ final class Settings: NSWindowController, NSTextFieldDelegate, NSWindowDelegate 
         }
     }
 
-    func show() {
+    func show(openModels: Bool = false) {
+        if openModels, let index = SettingsPage.allCases.firstIndex(of: .models) {
+            navigation.selectedSegment = index
+            pages.selectTabViewItem(at: index)
+        }
         refresh()
         if let screen = window?.screen ?? NSScreen.main {
             window?.setContentSize(NSSize(width: 560, height: min(546, screen.visibleFrame.height - 40)))
@@ -330,7 +365,10 @@ final class Settings: NSWindowController, NSTextFieldDelegate, NSWindowDelegate 
         NSApp.activate()
     }
 
-    func report(_ message: String) { modelDetail.stringValue = message }
+    func report(_ message: String) {
+        modelDetail.stringValue = message
+        modelDetail.isHidden = message.isEmpty
+    }
 
     func refreshLanguage() {
         languagePicker?.selectItem(at: Int(SpeechLanguage.preference.rawValue))
@@ -567,9 +605,29 @@ final class Settings: NSWindowController, NSTextFieldDelegate, NSWindowDelegate 
         else { changed?() }
     }
 
+    func updateMicrophoneKey(_ status: MicrophoneKey.Status) {
+        microphoneKey.state = prefs.bool(forKey: Preference.microphoneShortcut) ? .on : .off
+        microphoneKey.isEnabled = status != .checking
+        microphoneKeyActions.isHidden = true
+        switch status {
+        case .off: microphoneKeyDetail.stringValue = "Use the built-in microphone key while Amapoani is running."
+        case .checking: microphoneKeyDetail.stringValue = "Setting up the microphone key…"
+        case .active: microphoneKeyDetail.stringValue = "Ready. Press the microphone key by itself."
+        case .problem(let message):
+            microphoneKeyDetail.stringValue = message
+            microphoneKeyActions.isHidden = false
+        }
+    }
+
     @objc private func microphoneKeyChanged(_ button: NSButton) {
         prefs.set(button.state == .on, forKey: Preference.microphoneShortcut)
-        changed?()
+        microphoneKeyRequested?()
+    }
+
+    @objc private func retryMicrophoneKey() { microphoneKeyRequested?() }
+
+    @objc private func openMicrophoneKeyHelp() {
+        NSWorkspace.shared.open(URL(string: "https://github.com/xochilcahua/Amapoani-Beta/blob/main/docs/microphone-key.md")!)
     }
 
     @objc private func durationChanged(_ item: NSTextField) {

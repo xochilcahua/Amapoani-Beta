@@ -21,6 +21,8 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var settings: Settings?
     private var statusItem: NSStatusItem?
     private var shortcut: Shortcut?
+    private let microphoneKey = MicrophoneKey()
+    private var microphoneKeyStatus = MicrophoneKey.Status.off
     private var launched = false
     private var notice = "" { didSet { noticeTimer?.invalidate(); noticeTimer = nil } }
     private var noticeTimer: Timer?
@@ -116,10 +118,14 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate {
         statusItem = status
         capsule.onAppearanceChanged = { [weak self] in self?.refreshBrandIcon() }
         applyPreferences()
+        if UserDefaults.standard.bool(forKey: Preference.microphoneShortcut) { updateMicrophoneKey() }
         launched = true
         reveal(place: true)
         NSApp.servicesProvider = self
         NSUpdateDynamicServices()
+        if Bundle.main.bundleIdentifier == "local.ahampo.capsule", models.runtime.libraryDirectory == nil {
+            openSettings(showModels: true)
+        }
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
@@ -128,6 +134,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        microphoneKey.releaseOnQuit()
         capture.reset()
         track?.stop()
         unload()
@@ -139,7 +146,9 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate {
         menu.addItem(item)
     }
 
-    @objc private func showSettings() {
+    @objc private func showSettings() { openSettings() }
+
+    private func openSettings(showModels: Bool = false) {
         let settings = self.settings ?? Settings(models: models)
         self.settings = settings
         settings.changed = { [weak self] in
@@ -182,8 +191,10 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate {
             if self?.source == .preview { self?.cancel() }
         }
         settings.microphone = { [weak self] completion in self?.micCheck(completion) }
+        settings.microphoneKeyRequested = { [weak self] in self?.updateMicrophoneKey() }
+        settings.updateMicrophoneKey(microphoneKeyStatus)
         settings.window?.appearance = panel.appearance
-        settings.show()
+        settings.show(openModels: showModels)
     }
 
     @objc private func quit() { NSApp.terminate(nil) }
@@ -198,30 +209,53 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate {
         panel.appearance = appearance == 1 ? NSAppearance(named: .aqua) :
             appearance == 2 ? NSAppearance(named: .darkAqua) : nil
         refreshBrandIcon()
-        let microphoneEnabled = prefs.bool(forKey: Preference.microphoneShortcut)
-        let microphoneKeyAvailable = shortcut?.bindMicrophoneKey(microphoneEnabled)
-        let summonOption = prefs.integer(forKey: "shortcut") == 1 ? 1 : 0
+        updateShortcutMenu()
+        render()
+        scheduleIdle()
+    }
+
+    private func updateMicrophoneKey() {
+        let enabled = UserDefaults.standard.bool(forKey: Preference.microphoneShortcut)
+        guard microphoneKeyStatus != .checking else { return }
+        if enabled && shortcut?.bindMicrophoneKey(true) != true {
+            setMicrophoneKeyStatus(.problem("The microphone shortcut is unavailable. Check Setup Help or use the global shortcut."))
+            return
+        }
+        if !enabled { _ = shortcut?.bindMicrophoneKey(false) }
+        setMicrophoneKeyStatus(.checking)
+        microphoneKey.configure(enabled) { [weak self] status in
+            guard let self else { return }
+            if status != .active { _ = shortcut?.bindMicrophoneKey(false) }
+            setMicrophoneKeyStatus(status)
+        }
+    }
+
+    private func setMicrophoneKeyStatus(_ status: MicrophoneKey.Status) {
+        microphoneKeyStatus = status
+        settings?.updateMicrophoneKey(status)
+        updateShortcutMenu()
+    }
+
+    private func updateShortcutMenu() {
+        let microphoneReady = microphoneKeyStatus == .active
+        let summonOption = UserDefaults.standard.integer(forKey: "shortcut") == 1 ? 1 : 0
         let summonAvailable = shortcut?.bind(summonOption)
         if let item = statusItem?.menu?.items.first {
             if summonAvailable != false {
                 item.keyEquivalent = " "
                 item.keyEquivalentModifierMask = [summonOption == 1 ? .control : .option, .shift]
             } else {
-                item.keyEquivalent = microphoneEnabled && microphoneKeyAvailable == true ? String(UnicodeScalar(NSF13FunctionKey)!) : ""
+                item.keyEquivalent = microphoneReady ? String(UnicodeScalar(NSF13FunctionKey)!) : ""
                 item.keyEquivalentModifierMask = []
             }
-            let shortcuts = [microphoneEnabled && microphoneKeyAvailable == true ? "Microphone key (F13)" : nil,
+            let shortcuts = [microphoneReady ? "Microphone key" : nil,
                              summonAvailable != false ? CapsuleShortcuts.summonOptions[summonOption] : nil].compactMap { $0 }
             item.toolTip = shortcuts.isEmpty ? "Show Capsule" : "Show Capsule: " + shortcuts.joined(separator: " or ")
             statusItem?.button?.toolTip = "Amapoani · " + (item.toolTip ?? "Show Capsule")
         }
         if summonAvailable == false {
             notice = "Shortcut unavailable. Choose another in Settings."
-        } else if microphoneKeyAvailable == false {
-            notice = "The microphone shortcut couldn’t be registered. Use the other shortcut."
         }
-        render()
-        scheduleIdle()
     }
 
     private func refreshBrandIcon() {
@@ -532,7 +566,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private func read() {
         guard models.runtime.libraryDirectory != nil else {
-            inform("Choose Set Up Speech in Settings → Models.")
+            openSettings(showModels: true)
             return
         }
         guard readRequest == nil else { return }
@@ -788,7 +822,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private func dictate() {
         guard models.runtime.libraryDirectory != nil else {
-            inform("Choose Set Up Speech in Settings → Models.")
+            openSettings(showModels: true)
             return
         }
         guard session.state.phase == "standard", !checking, dictationRequest == nil, deliveryRequest == nil else { return }

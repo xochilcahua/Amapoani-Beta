@@ -8,7 +8,7 @@ enum Model: String, CaseIterable {
         switch self {
         case .reading: return "Kokoro · EN / ES"
         case .multilingualDictation: return "Whisper multilingual"
-        case .dictation: return "Whisper English-only (optional)"
+        case .dictation: return "Whisper English-only"
         }
     }
     var filename: String {
@@ -37,7 +37,9 @@ enum Model: String, CaseIterable {
 }
 
 final class Models {
-    let runtime = SpeechRuntime()
+    let runtime: SpeechRuntime
+
+    init(runtime: SpeechRuntime = SpeechRuntime()) { self.runtime = runtime }
     private let fm = FileManager.default
     private let compactPack = "kokoro-int8-multi-lang-v1_0"
     var root: URL { URL(fileURLWithPath: UserDefaults.standard.string(forKey: Preference.folder)!, isDirectory: true) }

@@ -33,3 +33,4 @@ jobs:
       - run: ./scripts/build.sh
       - run: codesign --verify --deep --strict build/preview/Amapoani.app
       - run: swiftc app/CapsuleShortcuts.swift tests/regressions/capsule-shortcuts.swift -o "$RUNNER_TEMP/capsule-shortcuts" && "$RUNNER_TEMP/capsule-shortcuts"
+      - run: swiftc app/MicrophoneKey.swift tests/regressions/microphone-key.swift -o "$RUNNER_TEMP/microphone-key" && "$RUNNER_TEMP/microphone-key"

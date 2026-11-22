@@ -1,9 +1,16 @@
 # Microphone-key shortcut
 
-The built-in microphone key sends the HID Voice Command usage. Holding Fn on a keyboard with Apple’s default function-row behavior sends F5 instead. Amapoani can optionally register F13 as a second shortcut. [Apple’s key remapping notes](https://developer.apple.com/library/archive/technotes/tn2450/) · [A similar Dictation-key mapping tested with Handy](https://github.com/cjpais/Handy/discussions/1026)
+In **Amapoani → Settings → Shortcuts**, enable **Show or hide with the microphone key**. When the status says **Ready**, press the built-in microphone key by itself. It toggles the idle capsule while Amapoani runs. Active playback and recording stay visible. **Fn–F5** retains its function-key behavior.
 
-With Apple Dictation disabled, run `./scripts/map-microphone-key.sh enable` from the repository. Enable **Use the microphone key (F13)** under **Settings → Shortcuts**. While Amapoani runs, tapping the key shows or hides its idle capsule. Active playback and recording stay visible. Fn+F5 retains its normal function-key behavior. The regular Amapoani shortcut is available regardless of the remap.
+![Shortcuts settings showing the microphone-key toggle and action bindings](images/settings-shortcuts.png)
 
-On the configured Mac, the `local.amapoani.microphone-key` user LaunchAgent runs the same helper at login. The helper checks the built-in keyboard’s current map before writing and refuses to overwrite a different remap. Keep the checkout at the same path for this login item to find the helper.
+Amapoani configures the built-in keyboard during setup and when it launches with the option enabled. It restores a mapping it created when you turn the option off or quit normally. The app recognizes an existing matching mapping and leaves its ownership with the tool that set it.
 
-To undo it, turn off the Amapoani checkbox. If the login item is installed, unload it with `launchctl bootout "gui/$(id -u)/local.amapoani.microphone-key"` and move `~/Library/LaunchAgents/local.amapoani.microphone-key.plist` to Trash. Run `./scripts/map-microphone-key.sh disable` to clear the active mapping. The helper clears only the exact mapping it configured.
+## If setup fails
+
+- **No supported built-in microphone key.** Use the displayed global shortcut. An external keyboard can send F13 once the option is successfully set up on a supported Mac.
+- **The keyboard already has a remap.** Amapoani leaves existing remaps intact. If you choose to remove the competing remap in the tool that created it, return to Amapoani and click **Try Again**.
+- **macOS didn't apply the change.** Click **Try Again**. If macOS shows a permission prompt, read it and choose whether to allow the keyboard change. The global shortcut remains usable.
+- **The key opens Apple Dictation.** Verify Amapoani says **Ready**. Check **System Settings → Keyboard → Dictation** if you also assigned an Apple Dictation shortcut to that key.
+
+Early betas used a separate login helper. This release needs no login helper. If you still have the original `local.amapoani.microphone-key` login item and want to retire it, follow the [historical cleanup instructions](https://github.com/xochilcahua/Amapoani-Beta/blob/5f40827/docs/microphone-key.md). [Apple’s key-remapping reference](https://developer.apple.com/library/archive/technotes/tn2450/)
