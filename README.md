@@ -4,9 +4,11 @@ Amapoani is an offline read-aloud and dictation capsule for Apple Silicon Macs. 
 
 ## Install the beta
 
-Download `Amapoani-Installer-macos-arm64.zip` from the [beta release](https://github.com/xochilcahua/Amapoani-Beta/releases). Unzip it and open `Install-Amapoani.command`. The installer verifies and downloads the speech runtime, then places the app in `~/Applications`. Open Amapoani from Finder and use **Settings → Models → Download Missing Models**. The installer needs an internet connection for setup.
+1. Download `Amapoani-macos-arm64.dmg` from the [beta release](https://github.com/xochilcahua/Amapoani-Beta/releases).
+2. Open the disk image and drag **Amapoani** into **Applications**. Open the copy in Applications.
+3. Choose **Settings → Models → Set Up Speech**. Amapoani downloads and verifies the runtime and any missing speech models. Setup requires internet access. Speech works offline afterward.
 
-This beta is ad hoc signed and has no Apple notarization. macOS may ask for manual approval when you open it. [Apple's guidance for running downloaded apps](https://support.apple.com/en-us/102445)
+The beta is ad hoc signed. If macOS says Apple cannot check it for malicious software, dismiss the alert, then follow Apple's per-app approval steps under **System Settings → Privacy & Security → Open Anyway**. This beta has no Apple notarization. [Apple's guidance](https://support.apple.com/en-us/102445)
 
 ## Build and open
 

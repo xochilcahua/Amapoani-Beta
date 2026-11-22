@@ -379,6 +379,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func worker(_ model: Model, voice: ReadingVoice? = nil, language: SpeechLanguage? = nil) -> Worker? {
+        guard models.runtime.libraryDirectory != nil else { return nil }
         if model == .reading && voice == nil && session.state.reading { return workers[model] }
         if model == .dictation && (session.state.dictating || dictationRequest != nil || checking),
            let active = workers[model] { return active }
@@ -530,6 +531,10 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func read() {
+        guard models.runtime.libraryDirectory != nil else {
+            inform("Choose Set Up Speech in Settings → Models.")
+            return
+        }
         guard readRequest == nil else { return }
         dictationRequest = nil
         let request = Desktop.Request()
@@ -648,6 +653,7 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func missingReadingAssets(for voice: ReadingVoice) -> String {
+        guard models.runtime.libraryDirectory != nil else { return "Choose Set Up Speech in Settings → Models." }
         if !models.candidates(for: .reading, separateVoice: true).isEmpty {
             return "Download \(voice.label) in Settings → Speech."
         }
@@ -781,6 +787,10 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func dictate() {
+        guard models.runtime.libraryDirectory != nil else {
+            inform("Choose Set Up Speech in Settings → Models.")
+            return
+        }
         guard session.state.phase == "standard", !checking, dictationRequest == nil, deliveryRequest == nil else { return }
         readRequest = nil
         let language = SpeechLanguage.preference
@@ -1023,6 +1033,10 @@ final class App: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func micCheck(_ completion: @escaping (String) -> Void) {
+        guard models.runtime.libraryDirectory != nil else {
+            completion("Choose Set Up Speech in Settings → Models.")
+            return
+        }
         guard session.state.phase == "standard", !checking, dictationRequest == nil else {
             completion("A speech task is already active.")
             return

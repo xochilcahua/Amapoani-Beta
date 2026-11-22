@@ -21,6 +21,14 @@ final class Worker {
                     throw ModelError("The installed model is incomplete or damaged.")
                 }
                 proc.executableURL = Bundle.main.executableURL!.deletingLastPathComponent().appendingPathComponent("ahampo-speech")
+                guard let libraries = models.runtime.libraryDirectory else {
+                    throw ModelError("Set up speech in Settings → Models.")
+                }
+                if libraries.standardizedFileURL != Bundle.main.privateFrameworksURL?.standardizedFileURL {
+                    var environment = ProcessInfo.processInfo.environment
+                    environment["DYLD_LIBRARY_PATH"] = libraries.path
+                    proc.environment = environment
+                }
                 proc.arguments = [model.workerMode, location.path]
                 if model == .reading {
                     let weights = models.readingWeights(in: location)

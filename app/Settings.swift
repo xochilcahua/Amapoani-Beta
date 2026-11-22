@@ -44,6 +44,7 @@ final class Settings: NSWindowController, NSTextFieldDelegate, NSWindowDelegate 
     private var resolvedModels: [Model: URL] = [:]
     private var verification = UUID()
     private var downloads = Set<Model>()
+    private var installingRuntime = false
     private let prefs = UserDefaults.standard
     private var accessCheck: Timer?
 
@@ -272,8 +273,10 @@ final class Settings: NSWindowController, NSTextFieldDelegate, NSWindowDelegate 
         let check = UUID()
         verification = check
         resolvedModels.removeAll()
-        setup.isHidden = [.reading, .multilingualDictation].allSatisfy { !(candidates[$0] ?? []).isEmpty }
-        setup.isEnabled = downloads.isEmpty
+        let needsRuntime = models.runtime.libraryDirectory == nil
+        setup.title = needsRuntime ? "Set Up Speech" : "Download Missing Models"
+        setup.isHidden = !needsRuntime && [.reading, .multilingualDictation].allSatisfy { !(candidates[$0] ?? []).isEmpty }
+        setup.isEnabled = !installingRuntime && downloads.isEmpty
         for model in Model.allCases {
             let found = candidates[model]?.first
             modelLabels[model]?.stringValue = downloads.contains(model) ? "Downloading…" : found == nil ? "Missing" : "Checking…"
@@ -678,6 +681,25 @@ final class Settings: NSWindowController, NSTextFieldDelegate, NSWindowDelegate 
     }
 
     @objc private func setupClicked() {
+        guard !installingRuntime else { return }
+        if models.runtime.libraryDirectory == nil {
+            installingRuntime = true
+            report("Downloading and verifying the speech runtime…")
+            refresh()
+            models.runtime.install { [weak self] result in
+                guard let self else { return }
+                installingRuntime = false
+                switch result {
+                case .success:
+                    report("Speech runtime is ready.")
+                    setupClicked()
+                case .failure(let error):
+                    report(error.localizedDescription)
+                }
+                refresh()
+            }
+            return
+        }
         [Model.reading, .multilingualDictation].filter { model in
             let separate = model == .reading && [SpeechLanguage.english, .spanish].contains(where: hasSelectedSeparateVoice)
             return models.candidates(for: model, separateVoice: separate).isEmpty

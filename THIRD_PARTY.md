@@ -1,6 +1,6 @@
 # Third-party software and models
 
-Amapoani's source is licensed under Apache 2.0. Each dependency and model keeps its upstream license. The beta distributes source, shipped icon files and locally synthesized Kokoro audition clips. The bootstrap and app fetch the runtime libraries and model weights separately.
+Amapoani's source is licensed under Apache 2.0. Each dependency and model keeps its upstream license. The beta includes app source, icons and locally synthesized Kokoro audition clips. The disk image includes the app and its MIT-licensed Whisper runtime. Amapoani downloads Sherpa-ONNX, ONNX Runtime and model weights during speech setup. Local development builds can bundle the runtime from the bootstrap.
 
 | Component | License and source |
 | --- | --- |

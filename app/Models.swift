@@ -37,6 +37,7 @@ enum Model: String, CaseIterable {
 }
 
 final class Models {
+    let runtime = SpeechRuntime()
     private let fm = FileManager.default
     private let compactPack = "kokoro-int8-multi-lang-v1_0"
     var root: URL { URL(fileURLWithPath: UserDefaults.standard.string(forKey: Preference.folder)!, isDirectory: true) }
